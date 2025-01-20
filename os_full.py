@@ -61,15 +61,25 @@ def save_output_to_file(filename, output):
         file.write(output)
 
 def copy_firmware(ssh, firmware, destination):
-    """Copy firmware to the device."""
+    """Copy firmware to the device with a single-line progress bar."""
+    def progress(filename, size, sent):
+        """Callback to display a single-line progress bar."""
+        percentage = (sent / size) * 100 if size > 0 else 0
+        bar_length = 20  # Length of the progress bar
+        filled_length = int(bar_length * percentage // 100)
+        bar = '=' * filled_length + '-' * (bar_length - filled_length)
+        # Print the progress bar in a single line
+        print(f"\rCopying {filename}: [{bar}] {percentage:.2f}%", end="", flush=True)
+
     try:
-        with SCPClient(ssh.get_transport()) as scp:
+        with SCPClient(ssh.get_transport(), progress=progress) as scp:
             print(f"Copying {firmware} to {destination}...")
             scp.put(firmware, destination)
-            print(f"Successfully copied {firmware}.")
+            # Ensure the final progress bar displays 100%
+            print(f"\rCopying {firmware}: [{'=' * 20}] 100.00%", flush=True)
+            print("\nCopy completed successfully.")
     except Exception as e:
-        print(f"Failed to copy {firmware}: {e}")
-        
+        print(f"\nFailed to copy {firmware}: {e}")
 
 def is_device_pingable(hostname):
     """Ping the device to check if it's reachable."""
@@ -227,7 +237,7 @@ def main():
             print(f"{firmware} already exists on the target device.")
         
         print(f"Starting upgrade with {firmware}...")
-        output, error = execute_command(ssh, f"request system software add /var/tmp/{firmware}")
+        output, error = execute_command(ssh, f"request system software add /var/tmp/{firmware} no-validate")
         print(output)
         if "error" in error.lower():
             print(f"Upgrade failed for {firmware}. Exiting.")
@@ -237,7 +247,7 @@ def main():
         execute_command(ssh, "request system reboot")
         ssh.close()
         print(f"Waiting for {target_device} to come back online...")
-        time.sleep(30)
+        time.sleep(300)
         while not is_device_pingable(target_device):
             print("Device is not reachable. Retrying in 30 seconds...")
             time.sleep(30)

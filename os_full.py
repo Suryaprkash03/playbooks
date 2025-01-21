@@ -198,7 +198,7 @@ def main():
 
     print("\nDetails of Confirmed Uplinks:")
     for intf in uplink_candidates:
-        confirmation = "Confirmed" if intf in confirmed_uplinks else "Unconfirmed"
+        confirmation = "Up" if intf in confirmed_uplinks else "Down"
         description = interfaces_status[intf]["description"]
         print(f"Interface: {intf}, LLDP: {confirmation}, Description: {description}")
 
